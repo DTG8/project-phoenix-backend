@@ -105,29 +105,3 @@ app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
 
 
 
-const express = require('express');
-const cors = require('cors'); // <-- ADD THIS LINE to import the package
-const app = express();
-
-// Define your CORS options. This is crucial!
-const corsOptions = {
-    // Replace with your actual Netlify frontend URL (e.g., https://your-app-name.netlify.app)
-    origin: 'https://cloudphoenix.netlify.app', // <-- CHANGE THIS!
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Allowed HTTP methods
-    credentials: true, // Allow sending of cookies/auth headers
-    optionsSuccessStatus: 204 // For preflight requests
-};
-
-// Use the CORS middleware
-app.use(cors(corsOptions)); // <-- ADD THIS LINE
-
-// Make sure this comes before your routes and other middleware that handle requests
-app.use(express.json()); // Example: Middleware to parse JSON request bodies
-
-// ... your routes and other server logic ...
-
-// Example of how your server starts (ensure it uses process.env.PORT for Render)
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
