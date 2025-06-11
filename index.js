@@ -24,7 +24,7 @@ const PORT = process.env.PORT || 5001;
 // We will create a list of allowed origins.
 const allowedOrigins = [
     'http://localhost:3000', // Your local frontend
-    'YOUR_NETLIFY_SITE_URL'  // Your live frontend
+    'https://cloudphoenix.netlify.app'  // Your live frontend
 ];
 
 app.use(cors({
