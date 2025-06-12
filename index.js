@@ -1,6 +1,6 @@
 // =================================================================
-// ||                     PROJECT PHOENIX                         ||
-// ||         BACKEND SERVER - ASSET ENHANCEMENT UPDATE           ||
+// ||                     CLOUD PHOENIX                           ||
+// ||         BACKEND SERVER - V2 FEATURE UPDATE                  ||
 // =================================================================
 const express = require('express');
 const mongoose = require('mongoose');
@@ -26,14 +26,15 @@ mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopol
 // ===========================================
 const UserSchema = new mongoose.Schema({ name: { type: String, required: true }, email: { type: String, required: true, unique: true, lowercase: true }, password: { type: String, required: true }, role: { type: String, enum: ['user', 'admin'], default: 'user' }, createdAt: { type: Date, default: Date.now },});
 
-// *** CHANGES START HERE ***
+// *** CHANGES START HERE: Updated Asset Schema ***
 const AssetSchema = new mongoose.Schema({
     name: { type: String, required: true },
     ipAddress: { type: String, required: true },
     type: { type: String, required: true },
-    // Updated status enum
     status: { type: String, enum: ['Active', 'Inactive', 'Decommissioned'], default: 'Active' },
-    // Added optional username and password fields
+    cloudModel: { type: String, required: true },
+    provider: { type: String }, // Optional
+    location: { type: String }, // Optional
     username: { type: String },
     password: { type: String },
     tags: [{ type: String }],
@@ -69,21 +70,15 @@ app.use('/api/auth', authRouter);
 const assetRouter = express.Router();
 assetRouter.use(authMiddleware);
 
-// POST /api/assets (Updated to accept new fields)
+// POST /api/assets (Updated to accept all new fields)
 assetRouter.post('/', async (req, res) => {
     // *** CHANGES START HERE ***
-    const { name, ipAddress, type, status, username, password, tags, notes } = req.body;
+    const { name, ipAddress, type, status, cloudModel, provider, location, username, password, tags, notes } = req.body;
     try {
-        const newAsset = new Asset({
-            name, ipAddress, type, status, username, password, tags, notes,
-            createdBy: req.user.id,
-        });
+        const newAsset = new Asset({ name, ipAddress, type, status, cloudModel, provider, location, username, password, tags, notes, createdBy: req.user.id });
         const asset = await newAsset.save();
         res.json(asset);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
-    }
+    } catch (err) { console.error(err.message); res.status(500).send('Server error'); }
     // *** CHANGES END HERE ***
 });
 
@@ -93,14 +88,16 @@ assetRouter.get('/', async (req, res) => { try { const assets = await Asset.find
 // PUT /api/assets/:id (Updated to handle all editable fields)
 assetRouter.put('/:id', async (req, res) => {
     // *** CHANGES START HERE ***
-    const { name, ipAddress, type, status, username, password, tags, notes } = req.body;
+    const { name, ipAddress, type, status, cloudModel, provider, location, username, password, tags, notes } = req.body;
     const assetFields = {};
     if (name) assetFields.name = name;
     if (ipAddress) assetFields.ipAddress = ipAddress;
     if (type) assetFields.type = type;
     if (status) assetFields.status = status;
-    if (username) assetFields.username = username;
-    // Allow saving an empty password
+    if (cloudModel) assetFields.cloudModel = cloudModel;
+    if (provider !== undefined) assetFields.provider = provider;
+    if (location !== undefined) assetFields.location = location;
+    if (username !== undefined) assetFields.username = username;
     if (password !== undefined) assetFields.password = password;
     if (tags) assetFields.tags = tags;
     if (notes) assetFields.notes = notes;
@@ -109,13 +106,9 @@ assetRouter.put('/:id', async (req, res) => {
     try {
         let asset = await Asset.findById(req.params.id);
         if (!asset) return res.status(404).json({ msg: 'Asset not found' });
-
         asset = await Asset.findByIdAndUpdate(req.params.id, { $set: assetFields }, { new: true });
         res.json(asset);
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server error');
-    }
+    } catch (err) { console.error(err.message); res.status(500).send('Server error'); }
     // *** CHANGES END HERE ***
 });
 
@@ -130,5 +123,5 @@ const taskRouter = express.Router(); taskRouter.use(authMiddleware); app.use('/a
 const handoffRouter = express.Router(); handoffRouter.use(authMiddleware); app.use('/api/handoffs', handoffRouter);
 
 // Server Startup
-app.get('/', (req, res) => res.send('Project Phoenix API is running...'));
+app.get('/', (req, res) => res.send('Cloud Phoenix API is running...'));
 app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
