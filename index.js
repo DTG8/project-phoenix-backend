@@ -1,6 +1,6 @@
 // =================================================================
 // ||                     CLOUD PHOENIX                           ||
-// ||         BACKEND SERVER - V2 DEFINITIVE UPDATE               ||
+// ||         BACKEND SERVER - DEFINITIVE REVAMP                  ||
 // =================================================================
 const express = require('express');
 const mongoose = require('mongoose');
@@ -32,8 +32,8 @@ const AssetSchema = new mongoose.Schema({
     type: { type: String, required: true },
     status: { type: String, enum: ['Active', 'Inactive', 'Decommissioned'], default: 'Active' },
     cloudModel: { type: String, required: true },
-    provider: { type: String },
-    location: { type: String },
+    provider: { type: String }, // Optional
+    location: { type: String }, // Optional
     assetDepartment: { type: String, required: true, enum: ['Cloud', 'Network', 'VOIP'] },
     username: { type: String },
     password: { type: String },
@@ -42,30 +42,23 @@ const AssetSchema = new mongoose.Schema({
     lastUpdated: { type: Date, default: Date.now },
 });
 
-const ProjectSchema = new mongoose.Schema({ name: { type: String, required: true }}); // Simplified for brevity
-const TaskSchema = new mongoose.Schema({ title: { type: String, required: true }}); // Simplified for brevity
-const HandoffSchema = new mongoose.Schema({ summary: { type: String, required: true }}); // Simplified for brevity
-
 const User = mongoose.model('User', UserSchema);
 const Asset = mongoose.model('Asset', AssetSchema);
-const Project = mongoose.model('Project', ProjectSchema);
-const Task = mongoose.model('Task', TaskSchema);
-const Handoff = mongoose.model('Handoff', HandoffSchema);
 
 // Auth Middleware
 const authMiddleware = (req, res, next) => { const token = req.header('x-auth-token'); if (!token) { return res.status(401).json({ msg: 'No token, authorization denied' }); } try { const decoded = jwt.verify(token, process.env.JWT_SECRET); req.user = decoded.user; next(); } catch (err) { res.status(401).json({ msg: 'Token is not valid' }); } };
 
 // ===========================================
-// ||         UPDATED API ROUTES            ||
+// ||            API ROUTES                 ||
 // ===========================================
-// --- Auth Routes (Unchanged) ---
+// --- Auth Routes ---
 const authRouter = express.Router();
 authRouter.post('/register', async (req, res) => { const { name, email, password } = req.body; try { let user = await User.findOne({ email }); if (user) { return res.status(400).json({ msg: 'User already exists' }); } user = new User({ name, email, password }); const salt = await bcrypt.genSalt(10); user.password = await bcrypt.hash(password, salt); await user.save(); const payload = { user: { id: user.id } }; jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '5h' }, (err, token) => { if (err) throw err; res.json({ token }); }); } catch (err) { console.error(err.message); res.status(500).send('Server error'); } });
 authRouter.post('/login', async (req, res) => { const { email, password } = req.body; try { let user = await User.findOne({ email }); if (!user) { return res.status(400).json({ msg: 'Invalid credentials' }); } const isMatch = await bcrypt.compare(password, user.password); if (!isMatch) { return res.status(400).json({ msg: 'Invalid credentials' }); } const payload = { user: { id: user.id } }; jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '5h' }, (err, token) => { if (err) throw err; res.json({ token }); }); } catch (err) { console.error(err.message); res.status(500).send('Server error'); } });
 authRouter.get('/', authMiddleware, async (req, res) => { try { const user = await User.findById(req.user.id).select('-password'); res.json(user); } catch (err) { console.error(err.message); res.status(500).send('Server error'); } });
 app.use('/api/auth', authRouter);
 
-// --- Asset Routes (Updated) ---
+// --- Asset Routes ---
 const assetRouter = express.Router();
 assetRouter.use(authMiddleware);
 
@@ -83,7 +76,7 @@ assetRouter.get('/', async (req, res) => { try { const assets = await Asset.find
 assetRouter.put('/:id', async (req, res) => {
     const { name, ipAddress, type, status, cloudModel, provider, location, assetDepartment, username, password, notes } = req.body;
     const assetFields = { name, ipAddress, type, status, cloudModel, provider, location, assetDepartment, username, notes, lastUpdated: new Date() };
-    if (password) assetFields.password = password; // Only update password if provided
+    if (password) assetFields.password = password;
     try {
         let asset = await Asset.findById(req.params.id);
         if (!asset) return res.status(404).json({ msg: 'Asset not found' });
@@ -92,12 +85,10 @@ assetRouter.put('/:id', async (req, res) => {
     } catch (err) { console.error(err.message); res.status(500).send('Server error'); }
 });
 
-assetRouter.delete('/:id', async (req, res) => { try { let asset = await Asset.findById(req.params.id); if (!asset) return res.status(404).json({ msg: 'Asset not found' }); await Asset.findByIdAndRemove(req.params.id); res.json({ msg: 'Asset removed' }); } catch (err) { console.error(err.message); res.status(500).send('Server error'); } });
+assetRouter.delete('/:id', async (req, res) => { try { await Asset.findByIdAndRemove(req.params.id); res.json({ msg: 'Asset removed' }); } catch (err) { console.error(err.message); res.status(500).send('Server error'); } });
 app.use('/api/assets', assetRouter);
-
-// Other Routes (Unchanged)
-// ...
 
 // Server Startup
 app.get('/', (req, res) => res.send('Cloud Phoenix API is running...'));
 app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+
